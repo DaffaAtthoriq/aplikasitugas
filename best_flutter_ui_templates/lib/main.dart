@@ -1,55 +1,143 @@
-import 'dart:io';
-import 'package:best_flutter_ui_templates/app_theme.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'navigation_home_screen.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await SystemChrome.setPreferredOrientations(<DeviceOrientation>[
-    DeviceOrientation.portraitUp,
-    DeviceOrientation.portraitDown,
-  ]).then((_) => runApp(MyApp()));
+void main() {
+  runApp(const MyApp());
 }
 
+// Widget utama aplikasi
 class MyApp extends StatelessWidget {
+  const MyApp({Key? key}) : super(key: key);
+
   @override
   Widget build(BuildContext context) {
-    SystemChrome.setSystemUIOverlayStyle(
-      SystemUiOverlayStyle(
-        statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.dark,
-        statusBarBrightness: !kIsWeb && Platform.isAndroid
-            ? Brightness.dark
-            : Brightness.light,
-        systemNavigationBarColor: Colors.white,
-        systemNavigationBarDividerColor: Colors.transparent,
-        systemNavigationBarIconBrightness: Brightness.dark,
-      ),
-    );
     return MaterialApp(
-      title: 'Flutter UI',
-      debugShowCheckedModeBanner: false,
+      title: 'To-Do & Notes',
       theme: ThemeData(
         primarySwatch: Colors.blue,
-        textTheme: AppTheme.textTheme,
-        platform: TargetPlatform.iOS,
-        dividerTheme: DividerThemeData(color: Color(0xFFE0E0E0)),
       ),
-      home: NavigationHomeScreen(),
+      home: const HomePage(),
+      debugShowCheckedModeBanner: false, // Menghilangkan banner debug
     );
   }
 }
 
-class HexColor extends Color {
-  HexColor(final String hexColor) : super(_getColorFromHex(hexColor));
+// Model data sederhana untuk menyimpan catatan
+class NoteItem {
+  String title;
+  bool isDone;
 
-  static int _getColorFromHex(String hexColor) {
-    hexColor = hexColor.toUpperCase().replaceAll('#', '');
-    if (hexColor.length == 6) {
-      hexColor = 'FF' + hexColor;
+  NoteItem({required this.title, this.isDone = false});
+}
+
+// Halaman utama (Stateful karena datanya bisa berubah-ubah)
+class HomePage extends StatefulWidget {
+  const HomePage({Key? key}) : super(key: key);
+
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  // Menyimpan daftar catatan di dalam memori sementara
+  List<NoteItem> notes = [];
+  
+  // Controller untuk mengambil teks dari inputan pengguna
+  final TextEditingController _textController = TextEditingController();
+
+  // Fungsi untuk menambahkan catatan baru
+  void _addNote() {
+    if (_textController.text.isNotEmpty) {
+      setState(() {
+        notes.add(NoteItem(title: _textController.text));
+      });
+      _textController.clear(); // Bersihkan kolom teks setelah ditambah
+      Navigator.pop(context); // Tutup popup dialog
     }
-    return int.parse(hexColor, radix: 16);
+  }
+
+  // Fungsi untuk memunculkan popup dialog input
+  void _showAddDialog() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Tambah Catatan / Tugas'),
+          content: TextField(
+            controller: _textController,
+            decoration: const InputDecoration(hintText: "Tulis sesuatu di sini..."),
+            autofocus: true,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                _textController.clear();
+                Navigator.pop(context); // Batal dan tutup
+              },
+              child: const Text('Batal'),
+            ),
+            ElevatedButton(
+              onPressed: _addNote,
+              child: const Text('Simpan'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Catatan & Tugas-ku'),
+        centerTitle: true,
+      ),
+      // Menampilkan daftar catatan
+      body: notes.isEmpty
+          ? const Center(child: Text('Belum ada catatan. Yuk tambah!'))
+          : ListView.builder(
+              itemCount: notes.length,
+              itemBuilder: (context, index) {
+                final note = notes[index];
+                return Card(
+                  margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  child: ListTile(
+                    // Checkbox untuk menandai selesai/belum
+                    leading: Checkbox(
+                      value: note.isDone,
+                      onChanged: (bool? value) {
+                        setState(() {
+                          note.isDone = value!;
+                        });
+                      },
+                    ),
+                    title: Text(
+                      note.title,
+                      style: TextStyle(
+                        // Memberi efek coret jika sudah selesai
+                        decoration: note.isDone 
+                            ? TextDecoration.lineThrough 
+                            : TextDecoration.none,
+                      ),
+                    ),
+                    // Tombol hapus
+                    trailing: IconButton(
+                      icon: const Icon(Icons.delete, color: Colors.red),
+                      onPressed: () {
+                        setState(() {
+                          notes.removeAt(index);
+                        });
+                      },
+                    ),
+                  ),
+                );
+              },
+            ),
+      // Tombol mengambang di pojok kanan bawah
+      floatingActionButton: FloatingActionButton(
+        onPressed: _showAddDialog,
+        child: const Icon(Icons.add),
+      ),
+    );
   }
 }
