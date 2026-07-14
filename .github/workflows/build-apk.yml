@@ -1,1 +1,47 @@
+name: Build Android APK
 
+# 1. PEMICU (Kapan robot GitHub Actions harus bekerja?)
+on:
+  push:
+    branches: [ "main", "master" ] # Robot jalan otomatis jika ada perubahan di branch main/master
+  workflow_dispatch:               # Tombol manual aktif (bisa diklik kapan saja dari tab Actions)
+
+# 2. PROSES UTAMA
+jobs:
+  build:
+    name: Build APK
+    runs-on: ubuntu-latest # Meminjam komputer virtual Linux gratis milik GitHub
+
+    # 3. URUTAN KERJA (Langkah demi langkah yang dilakukan komputer virtual)
+    steps:
+      # Langkah A: Mengunduh semua kode dari repositori ke dalam komputer virtual
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # Langkah B: Memasang Java (Wajib ada untuk merakit aplikasi Android)
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      # Langkah C: Memasang framework Flutter di dalam komputer virtual
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable' # Menggunakan versi Flutter stabil terbaru
+          
+      # Langkah D: Menjalankan perintah untuk mendownload semua library/package pendukung
+      - name: Install Dependencies
+        run: flutter pub get
+
+      # Langkah E: Memulai proses kompilasi kode menjadi file instalasi APK (Release Mode)
+      - name: Build APK
+        run: flutter build apk --release
+
+      # Langkah F: Mengamankan file APK hasil kompilasi agar tidak terhapus dan bisa didownload
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release
+          path: build/app/outputs/flutter-apk/app-release.apk
